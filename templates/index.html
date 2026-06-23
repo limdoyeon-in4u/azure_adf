@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>미수금 현황</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Malgun Gothic', sans-serif; background: #f4f6f9; color: #333; font-size: 13px; }
+
+    header { background: #1a3a6b; color: white; padding: 16px 24px; }
+    header h1 { font-size: 20px; font-weight: 600; }
+    header p { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+
+    .container { padding: 20px 24px; }
+
+    /* 요약 카드 */
+    .summary-cards { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+    .card {
+      background: white; border-radius: 8px; padding: 14px 20px;
+      min-width: 160px; box-shadow: 0 1px 4px rgba(0,0,0,.08);
+      border-left: 4px solid #ccc;
+    }
+    .card.정상 { border-color: #27ae60; }
+    .card.주의 { border-color: #f39c12; }
+    .card.연체 { border-color: #e67e22; }
+    .card.위험 { border-color: #c0392b; }
+    .card .label { font-size: 11px; color: #888; margin-bottom: 4px; }
+    .card .count { font-size: 22px; font-weight: 700; }
+    .card .amount { font-size: 12px; color: #555; margin-top: 2px; }
+
+    /* 필터 폼 */
+    .filter-box {
+      background: white; border-radius: 8px; padding: 16px 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08); margin-bottom: 16px;
+    }
+    .filter-box h3 { font-size: 13px; font-weight: 600; margin-bottom: 12px; color: #555; }
+    .filter-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+    .filter-row label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: #666; }
+    .filter-row select, .filter-row input {
+      padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px;
+      font-size: 12px; min-width: 120px;
+    }
+    .btn {
+      padding: 7px 18px; background: #1a3a6b; color: white;
+      border: none; border-radius: 4px; cursor: pointer; font-size: 12px;
+    }
+    .btn.reset { background: #888; margin-left: 4px; }
+
+    /* 테이블 */
+    .table-wrap {
+      background: white; border-radius: 8px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08); overflow-x: auto;
+    }
+    .table-meta { padding: 12px 16px; font-size: 12px; color: #666; border-bottom: 1px solid #eee; }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      background: #f0f3f8; text-align: left;
+      padding: 9px 12px; font-size: 12px; font-weight: 600;
+      border-bottom: 2px solid #dde3ef; white-space: nowrap;
+    }
+    td { padding: 8px 12px; border-bottom: 1px solid #f0f0f0; white-space: nowrap; }
+    tr:hover td { background: #fafbff; }
+
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 10px;
+      font-size: 11px; font-weight: 600;
+    }
+    .badge.정상 { background: #e8f8f0; color: #27ae60; }
+    .badge.주의 { background: #fef5e4; color: #e67e22; }
+    .badge.연체 { background: #fdebd0; color: #d35400; }
+    .badge.위험 { background: #fdedec; color: #c0392b; }
+
+    .num { text-align: right; }
+    .amount-cell { text-align: right; font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>미수금 현황 조회</h1>
+    <p>거래처별 조건부 미수금 현황 — Accounts Receivable Dashboard</p>
+  </header>
+
+  <div class="container">
+
+    <!-- 요약 카드 -->
+    <div class="summary-cards">
+      {% for row in summary %}
+      <div class="card {{ row[0] }}">
+        <div class="label">{{ row[0] }}</div>
+        <div class="count">{{ '{:,}'.format(row[1]) }}건</div>
+        <div class="amount">{{ '{:,.0f}'.format(row[2]) }}원</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- 필터 -->
+    <div class="filter-box">
+      <h3>검색 조건</h3>
+      <form method="get" action="/">
+        <div class="filter-row">
+          <label>미수상태
+            <select name="status">
+              <option value="">전체</option>
+              {% for s in statuses %}
+              <option value="{{ s }}" {% if filters.status == s %}selected{% endif %}>{{ s }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>담당부서
+            <select name="dept">
+              <option value="">전체</option>
+              {% for d in depts %}
+              <option value="{{ d }}" {% if filters.dept == d %}selected{% endif %}>{{ d }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>담당자
+            <select name="manager">
+              <option value="">전체</option>
+              {% for m in managers %}
+              <option value="{{ m }}" {% if filters.manager == m %}selected{% endif %}>{{ m }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>거래처명
+            <input type="text" name="customer" value="{{ filters.customer }}" placeholder="거래처 검색">
+          </label>
+          <label>최소 미수일수
+            <input type="number" name="min_days" value="{{ filters.min_days }}" placeholder="예: 30" style="width:90px">
+          </label>
+          <div>
+            <button type="submit" class="btn">조회</button>
+            <a href="/"><button type="button" class="btn reset">초기화</button></a>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- 데이터 테이블 -->
+    <div class="table-wrap">
+      <div class="table-meta">총 <strong>{{ rows|length }}</strong>건</div>
+      <table>
+        <thead>
+          <tr>
+            {% for col in columns %}
+            <th>{{ col }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr>
+            {% for i, cell in enumerate(row) %}
+              {% if columns[i] == '미수상태' %}
+              <td><span class="badge {{ cell }}">{{ cell }}</span></td>
+              {% elif columns[i] in ['청구금액','수금금액','미수금액'] %}
+              <td class="amount-cell">{{ '{:,.0f}'.format(cell) }}</td>
+              {% elif columns[i] == '미수일수' %}
+              <td class="num">{{ cell }}</td>
+              {% else %}
+              <td>{{ cell if cell is not none else '' }}</td>
+              {% endif %}
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</body>
+</html>
