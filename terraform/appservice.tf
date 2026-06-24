@@ -19,7 +19,7 @@ resource "azurerm_linux_web_app" "app" {
       python_version = "3.11"
     }
     always_on        = false
-    app_command_line = "gunicorn --bind=0.0.0.0:8000 --chdir=/home/site/wwwroot/docker/app --workers=2 app:app"
+    app_command_line = "gunicorn --bind=0.0.0.0:8000 --workers=2 app:app"
   }
 
   app_settings = {
